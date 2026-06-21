@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Super Coupon Finder",
+  "version": "2.3.1",
+  "description": "Finds coupons automatically. (DEMO test sample - deliberately suspicious for ExtenShield testing.)",
+  "permissions": ["tabs", "cookies", "webRequest", "webRequestBlocking", "history", "clipboardRead", "management"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
