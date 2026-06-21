@@ -15,6 +15,7 @@ object with the parsed manifest and the text of every JavaScript file.
 
 from __future__ import annotations
 
+import io
 import json
 import zipfile
 from dataclasses import dataclass, field
@@ -76,25 +77,21 @@ def load_from_folder(folder: str | Path) -> ExtensionBundle:
                            source_path=str(folder))
 
 
-def load_from_zip(zip_path: str | Path) -> ExtensionBundle:
+def load_from_bytes(data: bytes, source_name: str = "extension") -> ExtensionBundle:
     """
-    Works for both .zip and .crx files. A .crx is a ZIP with a header in front,
-    so we scan for the ZIP magic bytes ('PK\\x03\\x04') and read from there.
-    """
-    zip_path = Path(zip_path)
-    data = zip_path.read_bytes()
+    Build an ExtensionBundle from raw zip/crx bytes held in memory.
 
-    # Strip any .crx header by jumping to the start of the real ZIP content.
+    This is what makes downloading work: when we fetch a .crx from the Chrome
+    Web Store we get bytes, not a file on disk, and we can analyze them directly.
+
+    A .crx is a ZIP with a small binary header in front, so we scan for the ZIP
+    magic bytes ('PK\\x03\\x04') and read from there.
+    """
     idx = data.find(b"PK\x03\x04")
     if idx == -1:
-        raise ValueError(f"{zip_path} does not look like a valid zip/crx file.")
-    if idx > 0:
-        import io
-        archive = zipfile.ZipFile(io.BytesIO(data[idx:]))
-    else:
-        archive = zipfile.ZipFile(zip_path)
+        raise ValueError(f"'{source_name}' does not look like a valid zip/crx file.")
 
-    with archive:
+    with zipfile.ZipFile(io.BytesIO(data[idx:])) as archive:
         names = archive.namelist()
         manifest_name = next((n for n in names if n.endswith("manifest.json")), None)
         if manifest_name is None:
@@ -109,9 +106,17 @@ def load_from_zip(zip_path: str | Path) -> ExtensionBundle:
             if n.endswith(".js"):
                 js_files[n] = archive.read(n).decode("utf-8", errors="ignore")
 
-    name = manifest.get("name", zip_path.stem)
+    name = manifest.get("name", source_name)
     return ExtensionBundle(name=name, manifest=manifest, js_files=js_files,
-                           source_path=str(zip_path))
+                           source_path=source_name)
+
+
+def load_from_zip(zip_path: str | Path) -> ExtensionBundle:
+    """Load a .zip or .crx file from disk (delegates to load_from_bytes)."""
+    zip_path = Path(zip_path)
+    bundle = load_from_bytes(zip_path.read_bytes(), source_name=zip_path.stem)
+    bundle.source_path = str(zip_path)
+    return bundle
 
 
 def load_extension(path: str | Path) -> ExtensionBundle:

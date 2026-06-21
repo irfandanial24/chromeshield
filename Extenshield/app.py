@@ -20,7 +20,8 @@ from pathlib import Path
 
 import streamlit as st
 
-from extenshield import scan
+from extenshield import scan, scan_url
+from extenshield.report import RISK_BANDS
 
 st.set_page_config(page_title="ExtenShield", page_icon="🛡️", layout="centered")
 
@@ -48,6 +49,49 @@ def show_report(report):
         unsafe_allow_html=True,
     )
 
+    # --- Score position on a 0-100 scale ---
+    st.progress(report.score / 100)
+
+    # --- How the level was decided (transparent scoring) ---
+    with st.expander("ℹ️ How is this rating determined?"):
+        st.write(
+            "Every risky thing ExtenShield finds — a dangerous permission, "
+            "broad website access, or a suspicious code pattern — adds a number "
+            "of **risk points**. The points are added up (and capped at 100) to "
+            "give the score. The score then falls into one of these bands:"
+        )
+        for low, high, level, meaning in RISK_BANDS:
+            colour = LEVEL_COLOURS.get(level, "#555")
+            here = " &nbsp;⬅️ **this extension**" if level == report.level else ""
+            st.markdown(
+                f"<span style='color:{colour};font-weight:700;'>{level}</span> "
+                f"&nbsp;`{low}–{high}` &nbsp;— {meaning}{here}",
+                unsafe_allow_html=True,
+            )
+        st.caption(
+            f"This extension scored {report.score}, which lands in the "
+            f"{report.level} band."
+        )
+
+    st.write("")
+
+    # --- What was scanned (so the user sees exactly which extension this is) ---
+    with st.container(border=True):
+        st.markdown("#### 🔍 Extension scanned")
+        c1, c2 = st.columns(2)
+        c1.markdown(f"**Name:** {report.extension_name}")
+        c1.markdown(f"**Version:** {report.version}")
+        c2.markdown(f"**Permissions requested:** {len(report.permissions)}")
+        c2.markdown(f"**Script files analysed:** {report.num_js_files}")
+        if report.description:
+            st.caption(report.description)
+        if report.permissions:
+            st.markdown("**Permissions:** " +
+                        ", ".join(f"`{p}`" for p in report.permissions))
+        if report.host_permissions:
+            st.markdown("**Website access:** " +
+                        ", ".join(f"`{h}`" for h in report.host_permissions))
+
     st.write("")
     if not report.findings:
         st.success("No risky behaviour detected.")
@@ -70,9 +114,25 @@ def show_report(report):
 st.title("🛡️ ExtenShield")
 st.caption("Rule-based static analysis for detecting malicious Chrome extensions.")
 
-tab_upload, tab_path = st.tabs(["Upload .zip / .crx", "Scan a folder path"])
+tab_url, tab_upload = st.tabs(["🔗 Web Store link", "📁 Upload .zip / .crx"])
+
+with tab_url:
+    st.caption("Paste a Chrome Web Store link (or just the extension ID) and "
+               "ExtenShield will download the extension and scan it for you.")
+    url = st.text_input(
+        "Chrome Web Store link or extension ID",
+        placeholder="https://chromewebstore.google.com/detail/name/<extension-id>",
+    )
+    if st.button("Scan extension") and url:
+        with st.spinner("Downloading and scanning the extension..."):
+            try:
+                report = scan_url(url)
+                show_report(report)
+            except Exception as exc:  # noqa: BLE001 - show a friendly message
+                st.error(f"Could not scan this extension: {exc}")
 
 with tab_upload:
+    st.caption("Already have the extension as a file? Upload its .zip or .crx.")
     uploaded = st.file_uploader("Choose an extension package", type=["zip", "crx"])
     if uploaded is not None:
         suffix = Path(uploaded.name).suffix
@@ -84,13 +144,3 @@ with tab_upload:
             show_report(report)
         except Exception as exc:  # noqa: BLE001 - show any load/parse error to user
             st.error(f"Could not analyze this file: {exc}")
-
-with tab_path:
-    folder = st.text_input("Path to an unpacked extension folder",
-                           placeholder="samples/malicious_extension")
-    if st.button("Scan folder") and folder:
-        try:
-            report = scan(folder)
-            show_report(report)
-        except Exception as exc:  # noqa: BLE001
-            st.error(f"Could not analyze this folder: {exc}")

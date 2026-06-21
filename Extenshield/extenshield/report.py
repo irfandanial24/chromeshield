@@ -38,6 +38,12 @@ class RiskReport:
     summary: str
     findings: list = field(default_factory=list)
     source_path: str = ""
+    # --- details about WHAT was scanned (shown to the user) ---
+    version: str = ""
+    description: str = ""
+    permissions: list = field(default_factory=list)
+    host_permissions: list = field(default_factory=list)
+    num_js_files: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -46,6 +52,11 @@ class RiskReport:
             "level": self.level,
             "summary": self.summary,
             "source_path": self.source_path,
+            "version": self.version,
+            "description": self.description,
+            "permissions": self.permissions,
+            "host_permissions": self.host_permissions,
+            "num_js_files": self.num_js_files,
             "findings": [
                 {
                     "category": f.category,
@@ -85,6 +96,11 @@ def build_report(ext: ExtensionBundle, findings: list[Finding]) -> RiskReport:
         summary=summary,
         findings=findings_sorted,
         source_path=ext.source_path,
+        version=ext.manifest.get("version", "unknown"),
+        description=ext.manifest.get("description", ""),
+        permissions=ext.permissions,
+        host_permissions=ext.host_permissions,
+        num_js_files=len(ext.js_files),
     )
 
 
@@ -94,6 +110,13 @@ def format_text(report: RiskReport) -> str:
     lines.append("=" * 64)
     lines.append(f"  ExtenShield report: {report.extension_name}")
     lines.append("=" * 64)
+    lines.append(f"  Version    : {report.version}")
+    lines.append(f"  Permissions: {len(report.permissions)}  |  Script files: {report.num_js_files}")
+    if report.permissions:
+        lines.append(f"  Requested  : {', '.join(report.permissions)}")
+    if report.host_permissions:
+        lines.append(f"  Site access: {', '.join(report.host_permissions)}")
+    lines.append("-" * 64)
     lines.append(f"  Risk score : {report.score}/100")
     lines.append(f"  Risk level : {report.level}")
     lines.append(f"  Summary    : {report.summary}")
