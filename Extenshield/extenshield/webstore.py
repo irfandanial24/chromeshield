@@ -35,6 +35,14 @@ _CRX_ENDPOINT = (
 _ID_PATTERN = re.compile(r"[a-p]{32}")
 
 
+class NotAnExtensionError(ValueError):
+    """
+    Raised when the pasted text is not a recognisable Chrome extension link/ID
+    (e.g. the user pasted a YouTube link or random text). The dashboard catches
+    this to show a clear 'this is not an extension' message.
+    """
+
+
 def extract_extension_id(url_or_id: str) -> str:
     """
     Find the extension ID inside a pasted Web Store URL or raw ID.
@@ -43,14 +51,27 @@ def extract_extension_id(url_or_id: str) -> str:
       https://chromewebstore.google.com/detail/sponsorblock/mnjggcdmjocbbbhaepdhchncahnbgone
       https://chrome.google.com/webstore/detail/sponsorblock/mnjggcdmjocbbbhaepdhchncahnbgone
       mnjggcdmjocbbbhaepdhchncahnbgone
+
+    Raises NotAnExtensionError if the input clearly isn't an extension link/ID.
     """
-    if not url_or_id:
-        raise ValueError("Please paste a Chrome Web Store link or extension ID.")
-    match = _ID_PATTERN.search(url_or_id.strip())
+    if not url_or_id or not url_or_id.strip():
+        raise NotAnExtensionError(
+            "Please paste a Chrome Web Store extension link or a 32-character "
+            "extension ID."
+        )
+
+    text = url_or_id.strip()
+    match = _ID_PATTERN.search(text)
     if not match:
-        raise ValueError(
-            "Couldn't find a valid extension ID in that input. A Web Store link "
-            "looks like '.../detail/name/<32-letter-id>'."
+        # Give a more specific hint depending on what they pasted.
+        if text.startswith("http"):
+            raise NotAnExtensionError(
+                "That link is not a Chrome Web Store extension. A valid link looks "
+                "like: chromewebstore.google.com/detail/<name>/<32-letter-id>"
+            )
+        raise NotAnExtensionError(
+            "That doesn't look like a Chrome extension. Paste a Chrome Web Store "
+            "link, or the extension's 32-character ID (letters a–p only)."
         )
     return match.group(0)
 
@@ -79,4 +100,12 @@ def download_crx(url_or_id: str, timeout: int = 30) -> tuple[str, bytes]:
 def load_from_webstore(url_or_id: str) -> ExtensionBundle:
     """Download an extension from the Web Store and return it ready to analyze."""
     ext_id, data = download_crx(url_or_id)
-    return load_from_bytes(data, source_name=ext_id)
+    try:
+        return load_from_bytes(data, source_name=ext_id)
+    except (ValueError, FileNotFoundError) as exc:
+        # We got *something* back, but it wasn't a real extension package -
+        # usually means that extension ID does not exist on the Web Store.
+        raise NotAnExtensionError(
+            f"No Chrome extension was found for ID '{ext_id}'. Double-check the "
+            f"Web Store link - this extension may not exist or has been removed."
+        ) from exc
