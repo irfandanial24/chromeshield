@@ -216,7 +216,7 @@ st.markdown(
     """
     <div class="es-hero">
       <div class="t">🛡️ ExtenShield</div>
-      <div class="s">Scan a Chrome extension for malicious behaviour — before you install it.</div>
+      <div class="s">Scan a Chrome extension for malicious behaviour before you install it.</div>
       <div>
         <span class="es-pill">⚡ Fast Scanning</span>
         <span class="es-pill">🔒 Privacy Focused</span>
