@@ -1,14 +1,6 @@
-"""
-analyzer.py
------------
-The heart of ExtenShield. It takes a loaded extension and checks it against
-the rules in rules.py, collecting "findings". Each finding is one piece of
-evidence (a dangerous permission, a broad host access, or a risky code
-pattern) together with the points it contributes.
-
-The scoring logic lives in report.py; this module's only job is to FIND
-things. Keeping detection and scoring separate makes both easier to test.
-"""
+# analyzer.py
+# Checks an extension against the rules and collects the findings.
+# It only finds things - the scoring is done later in report.py.
 
 from __future__ import annotations
 
@@ -21,16 +13,15 @@ from .loader import ExtensionBundle, load_extension
 
 @dataclass
 class Finding:
-    category: str      # "permission" | "host" | "code"
-    name: str          # short label, e.g. "cookies" or "eval()"
-    severity: str      # "low" | "medium" | "high"
-    weight: int        # risk points this finding contributes
-    reason: str        # human-readable explanation
-    evidence: str = "" # where we found it (file name, matched text, etc.)
+    category: str      # permission / host / code
+    name: str          # e.g. cookies or eval()
+    severity: str      # low / medium / high
+    weight: int        # points this finding adds
+    reason: str        # plain explanation
+    evidence: str = "" # where it was found
 
 
-# A single noisy pattern (e.g. lots of fetch calls) should not blow up the
-# score, so we count each JS rule at most this many times.
+# count each js rule at most this many times so one file can't blow up the score
 MAX_HITS_PER_JS_RULE = 3
 
 
@@ -64,7 +55,7 @@ def _check_host_permissions(ext: ExtensionBundle) -> list[Finding]:
                     reason=rule["reason"],
                     evidence=f'host permission: "{host}"',
                 ))
-                break  # one finding per rule is enough
+                break  # one is enough
     return findings
 
 
@@ -93,7 +84,7 @@ def _check_js(ext: ExtensionBundle) -> list[Finding]:
 
 
 def analyze(ext: ExtensionBundle) -> list[Finding]:
-    """Run every rule group against the extension and return all findings."""
+    # run the three checks and return all findings
     findings = []
     findings += _check_permissions(ext)
     findings += _check_host_permissions(ext)
@@ -102,6 +93,6 @@ def analyze(ext: ExtensionBundle) -> list[Finding]:
 
 
 def analyze_path(path) -> tuple[ExtensionBundle, list[Finding]]:
-    """Convenience: load an extension from disk and analyze it in one call."""
+    # load an extension from a path and analyse it in one go
     ext = load_extension(path)
     return ext, analyze(ext)

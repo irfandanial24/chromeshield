@@ -1,17 +1,6 @@
-"""
-loader.py
----------
-Loads a Chrome extension from disk so the analyzer can inspect it.
-
-An extension can come in a few shapes:
-  - a plain folder containing manifest.json + scripts
-  - a .zip file (the Chrome Web Store / developer download format)
-  - a .crx file (Chrome's packaged format, which is just a ZIP with a small
-    binary header in front)
-
-This module hides those differences. It returns a simple ExtensionBundle
-object with the parsed manifest and the text of every JavaScript file.
-"""
+# loader.py
+# Loads a Chrome extension so it can be scanned.
+# The extension can be a folder, a .zip or a .crx file.
 
 from __future__ import annotations
 
@@ -24,28 +13,24 @@ from pathlib import Path
 
 @dataclass
 class ExtensionBundle:
-    """Everything the analyzer needs from one extension."""
+    # holds the manifest and the js files of one extension
     name: str
     manifest: dict
-    js_files: dict = field(default_factory=dict)   # {filename: source_code}
+    js_files: dict = field(default_factory=dict)   # filename: code
     source_path: str = ""
 
     @property
     def permissions(self) -> list:
-        """Combined 'permissions' + 'optional_permissions' from the manifest."""
+        # normal + optional permissions
         perms = list(self.manifest.get("permissions", []))
         perms += list(self.manifest.get("optional_permissions", []))
         return perms
 
     @property
     def host_permissions(self) -> list:
-        """
-        Host permissions. In Manifest V3 these live under 'host_permissions';
-        in V2 they were mixed into 'permissions'. We gather both so the tool
-        works on old and new extensions.
-        """
+        # host permissions. MV3 keeps them separate, MV2 mixes them into
+        # permissions, so grab from both places
         hosts = list(self.manifest.get("host_permissions", []))
-        # In MV2, host patterns appear inside 'permissions' too.
         for p in self.manifest.get("permissions", []):
             if isinstance(p, str) and ("://" in p or p == "<all_urls>"):
                 hosts.append(p)
@@ -78,15 +63,9 @@ def load_from_folder(folder: str | Path) -> ExtensionBundle:
 
 
 def load_from_bytes(data: bytes, source_name: str = "extension") -> ExtensionBundle:
-    """
-    Build an ExtensionBundle from raw zip/crx bytes held in memory.
-
-    This is what makes downloading work: when we fetch a .crx from the Chrome
-    Web Store we get bytes, not a file on disk, and we can analyze them directly.
-
-    A .crx is a ZIP with a small binary header in front, so we scan for the ZIP
-    magic bytes ('PK\\x03\\x04') and read from there.
-    """
+    # build an extension from zip/crx bytes in memory (used after downloading).
+    # a .crx is a zip with a header in front, so find the zip start (PK bytes)
+    # and read from there
     idx = data.find(b"PK\x03\x04")
     if idx == -1:
         raise ValueError(f"'{source_name}' does not look like a valid zip/crx file.")
@@ -112,7 +91,7 @@ def load_from_bytes(data: bytes, source_name: str = "extension") -> ExtensionBun
 
 
 def load_from_zip(zip_path: str | Path) -> ExtensionBundle:
-    """Load a .zip or .crx file from disk (delegates to load_from_bytes)."""
+    # read a .zip or .crx from disk, then reuse load_from_bytes
     zip_path = Path(zip_path)
     bundle = load_from_bytes(zip_path.read_bytes(), source_name=zip_path.stem)
     bundle.source_path = str(zip_path)
@@ -120,7 +99,7 @@ def load_from_zip(zip_path: str | Path) -> ExtensionBundle:
 
 
 def load_extension(path: str | Path) -> ExtensionBundle:
-    """Smart loader: picks the right method based on the path."""
+    # pick the right loader depending on the path
     path = Path(path)
     if path.is_dir():
         return load_from_folder(path)

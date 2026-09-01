@@ -1,28 +1,11 @@
-"""
-rules.py
---------
-Rule definitions used by the ExtenShield static analyzer.
+# rules.py
+# All the detection rules live here as plain data.
+# Each rule says what to look for, how many risk points it adds (weight)
+# and a short reason. There are three groups: permissions, host permissions
+# and code patterns. Adding a new rule is just adding one more dictionary.
 
-This file is intentionally simple and data-driven: each rule is just a
-dictionary describing what to look for, how dangerous it is (weight), and a
-human-readable explanation. Keeping the rules separate from the engine means
-you can add or tune detections without touching the analysis code.
-
-There are three rule groups:
-  1. PERMISSION_RULES   - dangerous entries in manifest.json "permissions"
-  2. HOST_PERMISSION_RULES - overly broad website access (host permissions)
-  3. JS_PATTERN_RULES   - risky patterns found in the extension's JavaScript
-
-Each weight is a number of "risk points". The analyzer adds up the points of
-every rule that matches and converts the total into a 0-100 score.
-"""
-
-# ---------------------------------------------------------------------------
-# 1. Dangerous permissions
-# ---------------------------------------------------------------------------
-# Chrome extensions request "permissions" in their manifest. Some are harmless
-# (e.g. "storage"); others give powerful abilities that malware abuses.
-# severity: "low" | "medium" | "high"  (used only for display/colour)
+# ---- 1. dangerous permissions (from manifest.json) ----
+# storage is harmless, cookies/debugger etc. are dangerous.
 PERMISSION_RULES = [
     {
         "name": "tabs",
@@ -104,11 +87,8 @@ PERMISSION_RULES = [
     },
 ]
 
-# ---------------------------------------------------------------------------
-# 2. Host permissions (which websites the extension can touch)
-# ---------------------------------------------------------------------------
-# Patterns like "<all_urls>" or "*://*/*" mean the extension can run on EVERY
-# website, which is the single biggest red flag for content-stealing malware.
+# ---- 2. host permissions (which sites the extension can touch) ----
+# <all_urls> means every website, which is the biggest red flag.
 HOST_PERMISSION_RULES = [
     {
         "pattern": "<all_urls>",
@@ -136,13 +116,8 @@ HOST_PERMISSION_RULES = [
     },
 ]
 
-# ---------------------------------------------------------------------------
-# 3. Risky JavaScript patterns (regular expressions)
-# ---------------------------------------------------------------------------
-# These regexes are searched across every .js file bundled in the extension.
-# Each match is evidence of a behaviour that malware commonly uses. We cap how
-# many times a single rule can add points (see analyzer) so one noisy file
-# does not dominate the score.
+# ---- 3. risky javascript patterns (searched with regex) ----
+# each match is a sign the code might be doing something bad.
 JS_PATTERN_RULES = [
     {
         "name": "eval()",

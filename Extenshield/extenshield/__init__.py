@@ -1,9 +1,6 @@
-"""
-ExtenShield - a rule-based static analyzer that detects malicious Chrome
-browser extensions by inspecting their manifest and JavaScript.
-
-Public helper: scan() loads an extension, analyzes it, and returns a RiskReport.
-"""
+# extenshield package
+# ties the modules together and gives two simple helpers:
+# scan() for a file/folder and scan_url() for a Web Store link.
 
 from .analyzer import analyze, analyze_path, Finding
 from .loader import load_extension, ExtensionBundle
@@ -14,12 +11,12 @@ __version__ = "1.1.0"
 
 
 def scan(path) -> RiskReport:
-    """One-call helper: a folder / .zip / .crx path -> RiskReport."""
+    # scan a folder / .zip / .crx and return the report
     ext, findings = analyze_path(path)
     return build_report(ext, findings)
 
 
 def scan_url(url_or_id) -> RiskReport:
-    """One-call helper: a Chrome Web Store link or extension ID -> RiskReport."""
+    # scan a Web Store link or extension id and return the report
     ext = load_from_webstore(url_or_id)
     return build_report(ext, analyze(ext))

@@ -1,18 +1,7 @@
-"""
-report.py
----------
-Turns a list of findings into a final risk score, a risk level, and a readable
-report. The scoring approach is deliberately simple and explainable (important
-for a project you have to defend):
-
-  total_points = sum of the weights of every finding
-  score        = min(100, total_points)        # capped at 100
-  level        = band the score falls into
-
-We cap at 100 so the number is easy to read as "risk out of 100". Because the
-score is just a transparent sum of weighted rules, you can always explain
-exactly WHY an extension got the score it did - there is no black box.
-"""
+# report.py
+# Turns the findings into a score, a level and a report.
+# score = sum of the finding weights, capped at 100, then put into a band.
+# Simple on purpose so it can always be explained.
 
 from __future__ import annotations
 
@@ -21,7 +10,7 @@ from dataclasses import dataclass, field
 from .analyzer import Finding
 from .loader import ExtensionBundle
 
-# Score bands. Tune these thresholds during your evaluation.
+# the four score bands (low, high, name, summary)
 RISK_BANDS = [
     (0, 15, "MINIMAL", "Looks safe. Only low-risk behaviour detected."),
     (16, 35, "LOW", "Some elevated permissions, but nothing strongly malicious."),
@@ -38,7 +27,7 @@ class RiskReport:
     summary: str
     findings: list = field(default_factory=list)
     source_path: str = ""
-    # --- details about WHAT was scanned (shown to the user) ---
+    # details about what was scanned (shown to the user)
     version: str = ""
     description: str = ""
     permissions: list = field(default_factory=list)
@@ -83,7 +72,7 @@ def build_report(ext: ExtensionBundle, findings: list[Finding]) -> RiskReport:
     score = min(100, total)
     level, summary = _level_for_score(score)
 
-    # Show the most dangerous findings first.
+    # put the most serious findings first
     severity_order = {"high": 0, "medium": 1, "low": 2}
     findings_sorted = sorted(
         findings, key=lambda f: (severity_order.get(f.severity, 3), -f.weight)
@@ -105,7 +94,7 @@ def build_report(ext: ExtensionBundle, findings: list[Finding]) -> RiskReport:
 
 
 def format_text(report: RiskReport) -> str:
-    """Render the report as plain text for the command line."""
+    # plain-text report for the command line
     lines = []
     lines.append("=" * 64)
     lines.append(f"  ExtenShield report: {report.extension_name}")

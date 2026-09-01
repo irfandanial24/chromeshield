@@ -1,17 +1,6 @@
-"""
-cli.py
-------
-Command-line interface for ExtenShield.
-
-Usage:
-    python cli.py path/to/extension_folder
-    python cli.py path/to/extension.zip
-    python cli.py path/to/extension.crx --json
-
-Examples:
-    python cli.py samples/malicious_extension
-    python cli.py samples/benign_extension --json
-"""
+# cli.py
+# Command-line version of ExtenShield.
+# Example: python cli.py samples/malicious_extension
 
 import argparse
 import json
@@ -41,8 +30,7 @@ def main(argv=None):
     else:
         print(format_text(report))
 
-    # Exit code reflects risk so the tool can be used in scripts/CI:
-    # 0 = minimal/low, 1 = medium/high.
+    # exit code: 0 for safe (minimal/low), 1 for risky (medium/high)
     return 0 if report.level in ("MINIMAL", "LOW") else 1
 
 
