@@ -1,19 +1,8 @@
-"""
-app.py
-------
-The ExtenShield web dashboard, built with Streamlit.
-
-Run it with:
-    streamlit run app.py
-
-It lets you scan a Chrome extension (by Web Store link or by uploading its
-.zip / .crx) and shows a colourful risk report: the score, what was scanned,
-how the rating was decided, and every risky behaviour found. A side panel lists
-supported formats, tips, and your recent scans.
-
-Note: only the visual styling lives in this file. All the analysis (the scan,
-the rules and the scoring) lives in the extenshield package and is unchanged.
-"""
+# app.py
+# The ExtenShield web dashboard (Streamlit).
+# Run it with: streamlit run app.py
+# It scans an extension by link or upload and shows the risk report.
+# Only the look is in this file - the scanning is in the extenshield package.
 
 import html
 import tempfile
@@ -27,14 +16,14 @@ from extenshield.webstore import NotAnExtensionError
 
 st.set_page_config(page_title="ExtenShield", page_icon="🛡️", layout="wide")
 
-# Colours for each risk level and finding severity.
+# colours for each level and severity
 LEVEL_COLOURS = {
     "MINIMAL": "#2e7d32",
     "LOW": "#9e9d24",
     "MEDIUM": "#ef6c00",
     "HIGH": "#c62828",
 }
-# Gradient pairs used for the big score card (light -> dark of the level colour).
+# gradient pairs for the score card
 LEVEL_GRAD = {
     "MINIMAL": ("#43a047", "#2e7d32"),
     "LOW": ("#c0ca33", "#9e9d24"),
@@ -43,21 +32,19 @@ LEVEL_GRAD = {
 }
 SEVERITY_COLOURS = {"high": "#c62828", "medium": "#ef6c00", "low": "#2e7d32"}
 
-# Remember scan results between reruns so we can show "Recent Scans".
+# keep scans between reruns for the recent-scans list
 st.session_state.setdefault("history", [])
 st.session_state.setdefault("report", None)
 
 
 def remember(report):
-    """Add a scan to the recent-scans history (keep the latest few)."""
+    # add a scan to the recent list
     st.session_state.history.insert(0, report)
-    st.session_state.history = st.session_state.history[:30]  # keep up to 30
+    st.session_state.history = st.session_state.history[:30]  # keep last 30
     st.session_state.report = report
 
 
-# ---------------------------------------------------------------------------
-# Styling (this is the only part that changed - pure visual "painting")
-# ---------------------------------------------------------------------------
+# ---- styling (CSS) ----
 CSS = """
 <style>
   [data-testid="stToolbar"] {visibility: hidden;}
@@ -153,7 +140,7 @@ CSS = """
 def show_report(report):
     grad = LEVEL_GRAD.get(report.level, ("#666", "#333"))
 
-    # --- big score card ---
+    # score card
     st.markdown(
         f"""
         <div class="es-score" style="background:linear-gradient(135deg,{grad[0]} 0%,{grad[1]} 100%);">
@@ -185,7 +172,7 @@ def show_report(report):
                 unsafe_allow_html=True,
             )
 
-    # --- extension scanned panel ---
+    # extension scanned panel
     perms = report.permissions
     chips = "".join(
         f'<span class="es-chip"><span class="es-dot"></span>{html.escape(p)}</span>'
@@ -219,7 +206,7 @@ def show_report(report):
         unsafe_allow_html=True,
     )
 
-    # --- findings ---
+    # findings
     st.markdown('<div class="es-ptitle">🚩 Findings</div>', unsafe_allow_html=True)
     if not report.findings:
         st.success("No risky behaviour detected.")
@@ -245,7 +232,7 @@ def show_report(report):
 
 
 def side_panel():
-    """The right-hand panel: supported formats, tips, and recent scans."""
+    # right side panel: formats, tips, recent scans
     st.markdown(
         """
         <div class="es-side">
@@ -267,7 +254,7 @@ def side_panel():
         unsafe_allow_html=True,
     )
 
-    # Recent scans as clickable buttons — clicking one re-opens that result.
+    # recent scans as buttons - click to reopen a result
     st.markdown('<div class="es-h" style="margin:2px 2px 10px;">🕘 Recent Scans</div>',
                 unsafe_allow_html=True)
     if st.session_state.history:
@@ -276,14 +263,12 @@ def side_panel():
                 label = f"{rep.extension_name[:18]}  ·  {rep.score} {rep.level}"
                 if st.button(label, key=f"recent_{i}", use_container_width=True):
                     st.session_state.report = rep
-                    st.rerun()  # re-run so the result shows up by the scan box
+                    st.rerun()  # rerun so it shows by the scan box
     else:
         st.caption("No scans yet.")
 
 
-# ---------------------------------------------------------------------------
-# Page
-# ---------------------------------------------------------------------------
+# ---- page layout ----
 st.markdown(CSS, unsafe_allow_html=True)
 
 st.markdown(
@@ -334,7 +319,7 @@ with left:
                 except ConnectionError as exc:
                     st.session_state.report = None
                     st.error(f"🌐 {exc}")
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     st.session_state.report = None
                     st.error(f"Could not scan this extension: {exc}")
 
@@ -357,11 +342,11 @@ with left:
                     st.session_state.report = None
                     st.warning("⚠️ This file is not a Chrome extension. Please upload "
                                "a valid extension package (.zip or .crx).")
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     st.session_state.report = None
                     st.error(f"Could not analyze this file: {exc}")
 
-    # Show the result right here, just below the scan box (no long scroll).
+    # show the result below the scan box
     if st.session_state.report is not None:
         st.write("")
         show_report(st.session_state.report)
