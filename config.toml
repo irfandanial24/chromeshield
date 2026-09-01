@@ -1,0 +1,12 @@
+# Streamlit theme for ExtenShield.
+# This makes the deployed app look consistent and a bit more "product-like".
+[theme]
+primaryColor = "#c62828"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f4f6f8"
+textColor = "#1f2933"
+font = "sans serif"
+
+[server]
+# Keep uploads reasonable for a public app (matches the dashboard caption).
+maxUploadSize = 200
