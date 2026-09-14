@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Simple Notes",
+  "version": "1.0.0",
+  "description": "A tiny popup for jotting down quick notes. Harmless demo extension.",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
