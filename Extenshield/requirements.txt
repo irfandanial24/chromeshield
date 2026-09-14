@@ -1,7 +1,0 @@
-# ExtenShield dependencies
-#
-# The core analyzer (extenshield/, cli.py) uses ONLY the Python standard
-# library - no installs needed to run the command-line tool or the tests.
-#
-# Streamlit is required only for the web dashboard (app.py).
-streamlit>=1.30
